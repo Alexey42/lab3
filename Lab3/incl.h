@@ -15,10 +15,16 @@ class Program {
 		string type;
 
 		Lexem(int x1, int x2, string s, string t):type(t) {
-			string tmp = "";
-			for (int i = x1; i < x2; i++) tmp.push_back(s[i]);
-			if (t == "digit") val = stoi(tmp);
-			if (t == "neg_digit") val = -stoi(tmp);
+			string tmp(&s[x1], &s[x2]);
+			val = stoi(tmp);
+			if (t == "un_op") {
+				x1--;
+				while (x1 >= 0 && !isdigit(s[x1-1]) && (s[x1] == '-' || s[x1] == '(')) {
+					if (s[x1] == '-') val = -val; 
+					// здесь могут быть другие унарные операции
+					x1--;
+				}
+			}
 		}
 		Lexem(char sym, string t):type(t) {
 			op.push_back(sym);
@@ -75,7 +81,7 @@ class Program {
 		stack<string> ops;
 
 		for (int i = 0; i < input.capacity(); i++) {
-			if (input[i].type == "digit" || input[i].type == "neg_digit") {
+			if (input[i].type == "digit" || input[i].type == "un_op") {
 				output.push_back(to_string(input[i].val)); 
 			}
 			if (input[i].type == "left") {
@@ -127,15 +133,14 @@ public:
 					i = end - 1;
 					continue;
 				}
-				if (isOp(input[i])) {
-					if (input[i] == '-') {
-						status = "wait_negative_digit";
-					}
-					else {
-						if (input[i] == '(') flag++;
-						status = "wait_digit";
-						output.push_back(Lexem(input[i], "bin_op"));
-					}
+				if (input[i] == '-') {
+					status = "wait_un_operand";
+					continue;
+				}
+				if (input[i] == '(') {
+					flag++;
+					status = "wait_digit";
+					output.push_back(Lexem(input[i], "bin_op"));
 					continue;
 				}
 				else return 0;
@@ -147,7 +152,7 @@ public:
 					continue;
 				}
 				if (input[i] == ')') {
-					flag--;
+					if (flag >= 0) flag--;
 					status = "wait_bin_op";
 					output.push_back(Lexem(input[i], "right"));
 					continue;
@@ -165,7 +170,7 @@ public:
 					continue;
 				}
 				if (input[i] == '-' && isOp(input[i - 1])) {
-					status = "wait_negative_digit";
+					status = "wait_un_operand";
 					continue;
 				}
 				if (input[i] == '(') {
@@ -176,11 +181,11 @@ public:
 				}
 				else return 0;
 			}
-			if (status == "wait_negative_digit") {
+			if (status == "wait_un_operand") {
 				if (isdigit(input[i])) {
 					int end = i + 1;
 					while (isdigit(input[end])) end++;
-					Lexem l(i, end, input, "neg_digit"); 
+					Lexem l(i, end, input, "un_op"); 
 					output.push_back(l);
 					status = "wait_bin_op";
 					i = end - 1;
@@ -188,8 +193,12 @@ public:
 				}
 				if (input[i] == '(') {
 					flag++;
-					status = "wait_negative_digit";
+					status = "wait_un_operand";
 					output.push_back(Lexem(input[i], "left"));
+					continue;
+				}
+				if (input[i] == '-') {
+					status = "wait_un_operand";
 					continue;
 				}
 				else return 0;
